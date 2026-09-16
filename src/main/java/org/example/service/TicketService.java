@@ -1,10 +1,16 @@
 package org.example.service;
+
+import org.example.dto.ChangeStatusRequest;
+import java.time.LocalDateTime;
+
 import org.example.dto.CreateTicketRequest;
 import org.example.dto.TicketResponse;
 import org.example.mongo.model.ActivityType;
 import org.example.mySql.model.*;
 import org.example.mySql.repository.TicketRepository;
 import org.example.mySql.repository.EmployeeRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
 
@@ -39,11 +45,12 @@ public class TicketService {
         ticket.setTitle(request.getTitle());
         ticket.setDescription(request.getDescription());
         ticket.setPriority(request.getPriority());
+        ticket.setDueAt(request.getDuaAt());
         ticket.setRequester(requester);
         ticket.setStatus(TicketStatus.OPEN);
         ticket.setCreatedAt(LocalDateTime.now());
         ticket.setUpdatedAt(LocalDateTime.now());
-        ticket.setDueAt(calculateDueAt(request.getPriority()));
+        //ticket.setDueAt(calculateDueAt(request.getPriority()));
         Ticket savedTicket = ticketRepository.save(ticket);
         activityLogsService.createActivity(savedTicket.getId(), requesterId, ActivityType.TICKET_CREATED, "Ticket created");
         // Entity to DTO
@@ -57,13 +64,13 @@ public class TicketService {
         return toResponse(ticket);
     }
 
-
+/*
     public List<TicketResponse> findAll() {
         return ticketRepository.findAll().stream()
                 .map(ticket -> toResponse(ticket))
                 .toList();
     }
-
+*/
 
     private LocalDateTime calculateDueAt(Priority priority) {
         LocalDateTime now = LocalDateTime.now();
@@ -174,4 +181,68 @@ public class TicketService {
         activityLogsService.createActivity(savedTicket.getId(),adminId, ActivityType.TICKET_ASSIGNED, "Ticket assigned by Admin to AGENTID "+ agentId);
         return toResponse(savedTicket);
     }
+
+    public Page<Ticket> findAll(Pageable pageable) {
+        return ticketRepository.findAll(pageable);
+    }
+
+
+    public TicketResponse changeStatus(Long ticketId, Long employeeId, ChangeStatusRequest request) {
+        Employee employee = employeeRepository.findById(employeeId).orElseThrow(() ->
+                        new RuntimeException("Employee not found"));
+
+        Ticket ticket = ticketRepository.findById(ticketId).orElseThrow(() ->
+                        new RuntimeException("Ticket not found"));
+
+        if (employee.getRole() != Role.AGENT) {
+            throw new RuntimeException("Only AGENT change status");
+        }
+
+        if (ticket.getAssignedAgent() == null) {
+            throw new RuntimeException("Ticket is not assigned to an agent");
+        }
+           //must the same assigned agent for the ticket do update status
+        if ((ticket.getAssignedAgent().getId()) != (employeeId)) {
+            throw new RuntimeException("Only assigned agent can change ticket status");
+        }
+
+        TicketStatus currentStatus = ticket.getStatus();
+        TicketStatus newStatus = request.getStatus();
+
+        if (currentStatus == TicketStatus.OPEN && newStatus == TicketStatus.IN_PROGRESS) {
+            ticket.setStatus(TicketStatus.IN_PROGRESS);
+        } else if (currentStatus == TicketStatus.IN_PROGRESS && newStatus == TicketStatus.RESOLVED) {
+            ticket.setStatus(TicketStatus.RESOLVED);
+        } else {
+            throw new RuntimeException("invalid");
+        }
+
+        ticket.setUpdatedAt(LocalDateTime.now());
+        Ticket savedTicket = ticketRepository.save(ticket);
+        return toResponse(savedTicket);
+    }
+
+    public TicketResponse closeTicket(Long ticketId, Long requesterId) {
+        Employee requester = employeeRepository.findById(requesterId).orElseThrow(() ->
+                                new RuntimeException("Employee not found"));
+        Ticket ticket = ticketRepository.findById(ticketId).orElseThrow(() ->
+                                new RuntimeException("Ticket not found"));
+        if (requester.getRole() != Role.REQUESTER) {
+            throw new RuntimeException("Only REQUESTER close the ticket");
+        }
+        // Same requster must do close and create
+        if ((ticket.getRequester().getId()) != (requesterId)) {
+            throw new RuntimeException("Only ticket for this requester can close");
+        }
+        if (ticket.getStatus() != TicketStatus.RESOLVED) {
+            throw new RuntimeException("Ticket must be RESOLVED");
+        }
+
+        ticket.setStatus(TicketStatus.CLOSED);
+        ticket.setUpdatedAt(LocalDateTime.now());
+        Ticket savedTicket = ticketRepository.save(ticket);
+        return toResponse(savedTicket);
+    }
+
+
 }

@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.Setter;
 import org.example.mySql.model.Priority;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 public class CreateTicketRequest {
@@ -18,4 +20,7 @@ public class CreateTicketRequest {
 
     @NotNull(message = "Priority is required")
     private Priority priority;
+
+    @NotBlank(message =  "DuaAt is required")
+    private String duaAt;
 }

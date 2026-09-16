@@ -17,7 +17,7 @@ public class TicketResponse {
     private TicketStatus status;
     private Long requesterId;
     private Long assignedAgentId;
-    private LocalDateTime dueAt;
+    private String dueAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

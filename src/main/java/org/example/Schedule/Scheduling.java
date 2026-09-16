@@ -22,7 +22,7 @@ public class Scheduling {
         this.activityLogsService = activityLogsService;
     }
 
-    @Scheduled(fixedDelay = 1000)
+    @Scheduled(fixedDelay = 1000000)
     public void scheduleFixedDelayTask() {
         List<TicketResponse> tickets = ticketService.findTickets();
         for (TicketResponse t : tickets) {

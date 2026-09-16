@@ -42,7 +42,8 @@ public class Ticket {
     @JoinColumn(name = "agent_id")
     private Employee assignedAgent;
 
-    private LocalDateTime dueAt;
+    @NotBlank(message = "DuaAt is require")
+    private String dueAt;
 
     private LocalDateTime createdAt;
 

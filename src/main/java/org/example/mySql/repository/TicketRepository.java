@@ -15,4 +15,6 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
                     """, nativeQuery = true
     )
     List<Ticket> findTickets();
+
+
 }
